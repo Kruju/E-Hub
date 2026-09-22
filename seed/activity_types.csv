@@ -1,0 +1,46 @@
+activity_type_code,activity_name,scope,scope3_category,category_name,default_unit
+ELECTRICITY_GENERAL,General,SCOPE_2,,Electricity,kWh
+ELECTRICITY_BIOMASS,Biomass,SCOPE_2,,Electricity,kWh
+ELECTRICITY_COAL-OIL,Coal/Oil,SCOPE_2,,Electricity,kWh
+ELECTRICITY_NO_DETAIL,No Detail,SCOPE_2,,Electricity,kWh
+ELECTRICITY_FOSSIL FUEL,Fossil fuel,SCOPE_2,,Electricity,kWh
+ELECTRICITY_GAS,Gas,SCOPE_2,,Electricity,kWh
+ELECTRICITY_HYDROPOWER,Hydropower,SCOPE_2,,Electricity,kWh
+ELECTRICITY_NATURAL GAS,Natural gas,SCOPE_2,,Electricity,kWh
+ELECTRICITY_NUCLEAR,Nuclear,SCOPE_2,,Electricity,kWh
+ELECTRICITY_OTHER SOURCES,Other sources,SCOPE_2,,Electricity,kWh
+ELECTRICITY_PETROL,Petrol,SCOPE_2,,Electricity,kWh
+ELECTRICITY_RENEWABLE,Renewable,SCOPE_2,,Electricity,kWh
+ELECTRICITY_SOLAR,Solar,SCOPE_2,,Electricity,kWh
+HEATING_NATURAL_GAS,Natural gas,SCOPE_2,,Heating,kWh
+HEATING_BIOGAS,Biogas,SCOPE_2,,Heating,kWh
+HEATING_DISTRICT,District heating,SCOPE_2,,Heating,kWh
+HEATING_HEAT_PUMP,Heat pump,SCOPE_2,,Heating,kWh
+HEATING_SOLAR_THERMAL,Solar thermal,SCOPE_2,,Heating,kWh
+HEATING_ELECTRICITY,Heating Electricity,SCOPE_2,,Heating,kWh
+FUEL_DIESEL,Diesel,SCOPE_1,,Fuel,litre
+FUEL_PETROL,Petrol,SCOPE_1,,Fuel,litre
+WATER,Water,SCOPE_3,5,Water and Waste,m3
+WASTE,Waste,SCOPE_3,5,Water and Waste,ton
+PAPER,Paper,SCOPE_3,1,Purchased Goods and Services,kg
+BUSINESS_TRAVEL_FLIGHT,Flight,SCOPE_3,6,Business Travel,km
+BUSINESS_TRAVEL_TRAIN,Train,SCOPE_3,6,Business Travel,km
+BUSINESS_TRAVEL_CAR,Car,SCOPE_3,6,Business Travel,km
+BUSINESS_TRAVEL_HOTEL,Hotel,SCOPE_3,6,Business Travel,night
+BUSINESS_TRAVEL_HOTEL_EGENCIA,Hotel,SCOPE_3,6,Business Travel,night
+BUSINESS_TRAVEL_TRAIN_CFF,Train,SCOPE_3,6,Business Travel,km
+BUSINESS_TRAVEL_FLIGHT_EGENCIA,Flight,SCOPE_3,6,Business Travel,km
+EMPLOYEE_COMMUTING_FOOT,Employee commuting,SCOPE_3,7,Employee Commuting,km
+EMPLOYEE_COMMUTING_BICYCLE,Employee commuting,SCOPE_3,7,Employee Commuting,km
+EMPLOYEE_COMMUTING_PUBLIC TRANSPORT,Employee commuting,SCOPE_3,7,Employee Commuting,km
+EMPLOYEE_COMMUTING_MOTOR VEHICLE,Employee commuting,SCOPE_3,7,Employee Commuting,km
+PURCHASED_GOODS_SERVICES,Purchased goods and services,SCOPE_3,1,Purchased Goods and Services,CHF
+CAPITAL_GOODS,Capital goods,SCOPE_3,2,Capital Goods,CHF
+FINANCED_EMISSIONS_CORPORATE BONDS,Corporate Bonds,SCOPE_3,15,Financed Emissions,tCO2e
+FINANCED_EMISSIONS_LISTED EQUITY,Listed Equity,SCOPE_3,15,Financed Emissions,tCO2e
+FINANCED_EMISSIONS_SOVERIGN DEBT (WITH LULUCF),Soverign Debt (With LULUCF),SCOPE_3,15,Financed Emissions,tCO2e
+FINANCED_EMISSIONS_GREEN_BONDS,Project Finance,SCOPE_3,15,Financed Emissions,tCO2e
+OUTSTANDING_INVESTMENTS_CORPORATE BONDS,Corporate Bonds,SCOPE_3,15,Outstanding_Emissions,MCHF
+OUTSTANDING_INVESTMENTS_LISTED EQUITY,Listed Equity,SCOPE_3,15,Outstanding_Emissions,MCHF
+OUTSTANDING_INVESTMENTS_SOVERIGN DEBT (WITH LULUCF),Soverign Debt (With LULUCF),SCOPE_3,15,Outstanding_Emissions,MCHF
+OUTSTANDING_INVESTMENTS_GREEN_BONDS,Project Finance,SCOPE_3,15,Outstanding_Emissions,MCHF

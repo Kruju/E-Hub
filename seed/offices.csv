@@ -1,0 +1,23 @@
+office_id,office_city_name,office_detail,country_code,country_name,is_active,Entity Legal Name,is_virtual
+GLAND_HQ_CH,GLAND,GLAND_HQ,CH,Switzerland,yes,Swisquote Bank SA,False
+GLAND_ELLIPSE_CH,ZÜRICH,ELLIPSE,CH,Switzerland,yes,Swisquote Bank SA,False
+ZÜRICH_LOWENSTRASSE_CH,ZÜRICH,LÖWENSTRASSE,CH,Switzerland,yes,Swisquote Bank SA,False
+ZÜRICH_STETTBACH_CH,ZÜRICH,STETTBACH,CH,Switzerland,yes,Swisquote Bank SA,False
+ZÜRICH_JOSEFSTRASSE_CH,ZÜRICH,JOSEFSTRASSE,CH,Switzerland,yes,Swisquote Bank SA,False
+ZÜRICH_INSIDER-BAR_CH,ZÜRICH,INSIDER BAR,CH,Switzerland,yes,Swisquote Bank SA,False
+BERN_CH,BERN,,CH,Switzerland,yes,Swisquote Bank SA,False
+YUH_CH,YUH,,CH,Switzerland,yes,Swisquote Bank SA,False
+DUBAI_DIFC_AE,DUBAI,DIFC,AE,United Arab Emirates,yes,Swissquote Asia Ltd,False
+DUBAI_REP OFFICE_AE,DUBAI,REP OFFICE,AE,United Arab Emirates,yes,Swissquote Asia Ltd,False
+DUBAI_AE,DUBAI,,AE,United Arab Emirates,yes,Swissquote Asia Ltd,False
+LUXEMBOURG_LU,LUXEMBOURG,,LU,Luxembourg,yes,Swissquote Bank Europe Ltd,False
+SOUTH AFRICA_ZA,SOUTH AFRICA,,ZA,South Africa,yes,Swissquote South Africa (Pty) Ltd,False
+CYPRUS_CY,CYPRUS,,CY,Cyprus,yes,Swissquote Capital Markets Limited,False
+HONG KONG_CN,HONG KONG,,CN,China,yes,Swissquote Asia Ltd,False
+SINGAPORE_SG,SINGAPORE,,SG,Singapore,yes,Swissquote Pte. Ltd,False
+MALTA_MT,MALTA,,MT,Malta,yes,Swissquote Financial Services (Malta) Ltd,False
+UNITED KINGDOM_GB,UNITED KINGDOM,,GB,United Kingdom,yes,Swissquote LTD,False
+BUCHAREST_RO,BUCHAREST,,RO,Romania,yes,Swissquote Tech Hub Bucharest S.R.L.,False
+GLAND_INSIDER-BAR_CH,GLAND,INSIDER BAR,CH,Switzerland,yes,Swisquote Bank SA,False
+OWN_BOOK,,,,,yes,,True
+SWITZERLAND_CH,GLAND,HQ,CH,Switzerland,yes,Swisquote Bank SA,True
