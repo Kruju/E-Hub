@@ -38,6 +38,35 @@ If this fails after changing `calculations.py`, treat it as a real
 regression — every value in it was hand-verified against the source
 workbook (see the table below).
 
+### Web dashboard
+
+`app.py` is a Streamlit dashboard over the same `build_output_table()` — no
+separate backend, it queries Postgres directly.
+
+```bash
+pip install -r requirements-web.txt
+streamlit run app.py
+```
+
+It opens at `http://localhost:8501`. Toggles, all in the sidebar:
+
+- **Country** — same `country_code` values as the CLI's `--country` flag.
+- **Years shown in table** — pick any subset of 2023/2024/2025 for the table columns.
+- **Scope 2 basis** (Location vs Market Based) — controls which Scope 2 figure
+  feeds the KPI tiles and the scope-by-year chart; the full table always shows
+  both bases side by side regardless of this toggle.
+- **Show line-item detail** — expands the sub-categories under Electricity,
+  Heat, Fuels, and the Scope 1/2 breakdowns (collapsed by default to keep the
+  table scannable).
+- **Include Category 15 (Investments) in category chart** — Category 15 is
+  50-100x larger than every other Scope 3 category, so the breakdown chart
+  splits it out by default; switching this on adds it back with a log-scaled
+  axis so the smaller categories stay readable.
+
+Company-wide-only lines (Category 1 & 2, Category 15, and everything that
+depends on them) show as "—" whenever a specific country is selected — see
+"Country toggle" below for why.
+
 ## Data model
 
 Five tables mirror the source export 1:1 (`offices`, `office_annual_metrics`
