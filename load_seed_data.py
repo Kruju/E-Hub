@@ -221,6 +221,23 @@ def load_category_1_2_overrides(cur):
     )
 
 
+def load_historical_overrides(cur):
+    # Figures that are missing (not wrong) from the export -- see README
+    # "Historical overrides". Commuting comes from the published
+    # Sustainability Report 2025. calculations.py ignores a row as soon as
+    # real data for that metric/year exists.
+    rows = [
+        ("CATEGORY_7", 2024, 1166.0, "Sustainability Report 2025 (published, rounded); sample sheet's 1,167.13 is stale"),
+        ("CATEGORY_7", 2023, 1158.1444955286536, "Sample Output 2025; matches report (1,158)"),
+    ]
+    execute_values(
+        cur,
+        """INSERT INTO historical_overrides (metric, reporting_year, value, note)
+           VALUES %s ON CONFLICT (metric, reporting_year) DO NOTHING""",
+        rows,
+    )
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dsn", required=True, help="PostgreSQL connection string")
@@ -236,6 +253,7 @@ def main():
             load_emission_factors(cur)
             load_activities(cur)
             load_category_1_2_overrides(cur)
+            load_historical_overrides(cur)
         conn.commit()
         print("Seed data loaded.")
     finally:

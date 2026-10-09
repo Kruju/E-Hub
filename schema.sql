@@ -2,9 +2,9 @@
 --
 -- Models the 5 tables found in the "e-Hub Data Structure" export
 -- (offices, offices_information, activity_types, emission_factors, activities)
--- plus two small tables needed to make the "Output 2025" pivot reproducible:
---   category_1_2_overrides       -- static historical values for a line with no source data (see README)
---   electricity_renewable_share  -- placeholder reference table (see README, rule still pending)
+-- plus two small tables needed to make the published figures reproducible:
+--   category_1_2_overrides  -- static historical values for a line with no source data (see README)
+--   historical_overrides    -- 2023/2024 commuting figures missing from the export (see README)
 --
 -- See README.md for the full mapping between these tables and every line of
 -- the target pivot output, plus every data-quality issue found in the source
@@ -110,16 +110,18 @@ CREATE TABLE category_1_2_overrides (
     note            TEXT
 );
 
--- "Of which energy consumption from renewable / non-renewable sources"
--- cannot be derived from the activity-level electricity subtype quantities
--- (every combination was checked against the known 2023-2025 ratios -- none
--- matched). Left empty until the real rule/reference data is supplied.
-CREATE TABLE electricity_renewable_share (
-    country_code     CHAR(2) NOT NULL REFERENCES countries(country_code),
-    reporting_year   SMALLINT NOT NULL,
-    renewable_share  NUMERIC(6, 5) NOT NULL CHECK (renewable_share BETWEEN 0 AND 1),
-    source           TEXT,
-    PRIMARY KEY (country_code, reporting_year)
+-- Company-wide historical figures that are MISSING from the export (not
+-- wrong -- simply absent), stored so prior-year columns reconcile with the
+-- published Sustainability Report 2025. calculations.py only uses a row here
+-- when the live data for that metric/year is empty, so once the real data is
+-- loaded these are ignored automatically. Metrics:
+--   CATEGORY_7  Employee Commuting tCO2e    (no 2023/2024 commuting rows exist)
+CREATE TABLE historical_overrides (
+    metric          TEXT NOT NULL,
+    reporting_year  SMALLINT NOT NULL,
+    value           NUMERIC(18, 6) NOT NULL,
+    note            TEXT,
+    PRIMARY KEY (metric, reporting_year)
 );
 
 COMMIT;

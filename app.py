@@ -18,6 +18,8 @@ import streamlit as st
 from calculations import build_output_table
 
 YEARS = (2025, 2024, 2023)
+# Headline as published in the Sustainability Report (Category 15 excluded).
+TOTAL_GHG_DESC = "Greenhouse gas emissions in tCO2e (Market Based, excluding financed emissions)"
 
 # Categorical palette (dataviz skill's validated default), used in fixed
 # order per entity -- never reassigned based on filters/rank.
@@ -135,8 +137,8 @@ scope1 = val("Scope 1", latest)
 scope2 = val(scope2_total_desc, latest)
 scope3_op = val("Scope 3 operational", latest)
 cat15 = val("Category 15 - Investments", latest)
-total_ghg_market = val("Greenhouse gas emissions in tCO2e (Market Based)", latest)
-total_ghg_prior = val("Greenhouse gas emissions in tCO2e (Market Based)", prior)
+total_ghg_market = val(TOTAL_GHG_DESC, latest)
+total_ghg_prior = val(TOTAL_GHG_DESC, prior)
 total_energy = val("Total energy consumption in MWh", latest)
 ghg_per_fte = val("Greenhouse gas emissions in kgCO2e per FTE (Market Based)", latest)
 
@@ -146,7 +148,7 @@ with kpi_cols[0]:
     if total_ghg_market is not None and total_ghg_prior:
         delta = (total_ghg_market - total_ghg_prior) / total_ghg_prior
     st.metric(
-        f"Total GHG, {latest} (tCO2e, Market Based)",
+        f"Total GHG, {latest} (tCO2e, Market Based, excl. financed)",
         f"{total_ghg_market:,.0f}" if total_ghg_market is not None else "—",
         f"{delta*100:+.1f}% vs {prior}" if delta is not None else None,
         delta_color="inverse",  # a rise in emissions is bad, a fall is good
