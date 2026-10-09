@@ -4,12 +4,11 @@ Rebuilds the "Output 2025" pivot (Total energy, Scope 1/2/3 GHG emissions,
 per-FTE ratios, etc.) straight from the normalized PostgreSQL tables, with an
 optional country toggle.
 
-Every formula below was reverse-engineered from the two source workbooks and
-verified to reproduce the sample "Output 2025" sheet to the last decimal,
-UNLESS a comment says otherwise. See README.md for the full line-by-line
-derivation, the data-quality issues found in the source file, and the open
-items that still need real data from you (2024/2023 FTE, the renewable-share
-rule, and the Category 1 & 2 spend-based source).
+Every formula below reproduces the figures published in the Sustainability
+Report 2025 (Environmental Matters) for 2025, 2024 and 2023, UNLESS a comment
+says otherwise. See README.md for the full line-by-line derivation, the
+data-quality issues found in the source file, and the items that still need
+real data from you (2024/2023 FTE and commuting, Category 1 & 2 source data).
 
 Usage:
     from calculations import build_output_table
@@ -27,9 +26,13 @@ import pandas as pd
 # supported DBAPI2 object per pandas -- this is a known-safe usage.
 warnings.filterwarnings("ignore", message="pandas only supports SQLAlchemy")
 
-# The 8 Swiss offices that count as "SQB" (Swissquote Bank SA) for the
-# "... per FTE SQB ONLY" lines. Confirmed exact against the sample output.
-# Yuh (YUH_CH) is legally part of the same country but explicitly excluded.
+# The Swiss offices that count as "SQB" (Swissquote Bank SA). Paper, waste
+# and water are reported for SQB ONLY (report footnote: "based solely on
+# Swissquote Bank Ltd due to data unavailability in other locations"), so both
+# the quantities AND the per-FTE denominators use this list. Confirmed exact
+# against the report for all 3 years. Yuh (YUH_CH) is legally part of the same
+# country but explicitly excluded. SWITZERLAND_CH is the bank-level record
+# that paper consumption is booked against (it has no FTE rows of its own).
 SQB_ONLY_OFFICE_IDS = [
     "GLAND_HQ_CH",
     "GLAND_ELLIPSE_CH",
@@ -39,7 +42,22 @@ SQB_ONLY_OFFICE_IDS = [
     "ZÜRICH_INSIDER-BAR_CH",
     "BERN_CH",
     "GLAND_INSIDER-BAR_CH",
+    "SWITZERLAND_CH",
 ]
+
+# On-site combustion for heating is reported under Scope 1 (GHG Protocol and
+# the published report's "Scope 1 > Natural gas" line), even though
+# activity_types.scope tags these SCOPE_2. Biogas is folded into the
+# "Natural gas" line, exactly as the report does (38.621 + 0.016 = 38.637).
+SCOPE_1_HEATING_TYPES = ["HEATING_NATURAL_GAS", "HEATING_BIOGAS"]
+
+# Renewable share of purchased electricity, as reported:
+#   (HYDROPOWER + RENEWABLE + self-generated SOLAR) / purchased electricity.
+# Reproduces the sample's 93.525% / 93.108% / 93.396% (2025/2024/2023) to
+# floating-point precision. Note the self-generated solar sits in the
+# numerator but not the denominator -- that is how the reported figure is
+# built, kept as-is so the numbers reconcile.
+RENEWABLE_ELECTRICITY_TYPES = ["ELECTRICITY_HYDROPOWER", "ELECTRICITY_RENEWABLE"]
 
 # Activity types that only ever have ONE emission factor per year (no
 # LOCATION/MARKET split, no country split). In the raw activities export,
@@ -66,10 +84,9 @@ FUEL_TYPES = ["FUEL_DIESEL", "FUEL_PETROL"]
 # HEATING_SOLAR_THERMAL is declared with default_unit='kWh' like every other
 # heating type, but its recorded `quantity` values in the source are already
 # in MWh (confirmed: dividing by 1000 like the others makes it ~1000x too
-# small). Treated as a unit anomaly and left un-divided here. Separately,
-# its 2023 and 2025 values also look transposed against the sample output
-# (2024 lines up, 2023/2025 are swapped) -- that looks like a recording
-# error in the source and is NOT corrected here; see README.
+# small). Treated as a unit anomaly and left un-divided here. (Its 2023 and
+# 2025 values were transposed in the source export; corrected in
+# seed/activities.csv -- see README.)
 ENERGY_ALREADY_IN_MWH = {"HEATING_SOLAR_THERMAL"}
 
 # FUEL_DIESEL/FUEL_PETROL quantities are recorded in litres. Converting to
@@ -148,23 +165,13 @@ def load_category_1_2_overrides(conn, years: tuple[int, ...]) -> dict[int, float
     return dict(zip(df["reporting_year"], df["tco2e_value"]))
 
 
-def load_renewable_share(conn, country_code: str | None, year: int) -> float | None:
-    """Renewable share of PURCHASED electricity for one country/year.
-
-    Returns None until electricity_renewable_share is populated -- see
-    README ("Renewable %" is an open item, you're supplying the rule).
-    For the all-countries view we return a purchased-electricity-weighted
-    average across countries that do have a reference value; countries
-    without one are silently left out of the weighted average (flagged in
-    the returned dict's `coverage` note by the caller, not here).
-    """
-    if country_code is not None:
-        sql = "SELECT renewable_share FROM electricity_renewable_share WHERE country_code = %s AND reporting_year = %s"
-        cur = conn.cursor()
-        cur.execute(sql, (country_code, year))
-        row = cur.fetchone()
-        return float(row[0]) if row else None
-    return None  # weighted-average path handled in the section builder
+def load_historical_overrides(conn, years: tuple[int, ...]) -> dict[tuple[str, int], float]:
+    """{(metric, year): value} for figures missing from the export -- see
+    schema.sql / README "Historical overrides". Only used as a fallback when
+    the live data for that metric/year is empty."""
+    sql = "SELECT metric, reporting_year, value FROM historical_overrides WHERE reporting_year = ANY(%s)"
+    df = _fetch_df(conn, sql, (list(years),))
+    return {(row.metric, int(row.reporting_year)): float(row.value) for row in df.itertuples()}
 
 
 def _filter_country(df: pd.DataFrame, country_code: str | None) -> pd.DataFrame:
@@ -206,6 +213,7 @@ def build_output_table(conn, country_code: str | None = None, years: tuple[int, 
     act = load_activities(conn, years)
     fte = load_fte(conn, years)
     cat12 = load_category_1_2_overrides(conn, years)
+    overrides = load_historical_overrides(conn, years)
 
     act_f = _filter_country(act, country_code)
     fte_f = _filter_country(fte, country_code)
@@ -232,17 +240,28 @@ def build_output_table(conn, country_code: str | None = None, years: tuple[int, 
     fuels = yearly(lambda y: qty_mwh(fuel_mask, y))
     total_energy = {y: electricity[y] + heat[y] + fuels[y] for y in years}
 
-    total_fte = yearly(lambda y: float(fte_f.loc[fte_f["reporting_year"] == y, "fte_total"].sum())
-                        if fte_f.loc[fte_f["reporting_year"] == y, "fte_total"].notna().any() else None)
+    def group_fte(y):
+        live = float(fte_f.loc[fte_f["reporting_year"] == y, "fte_total"].sum(skipna=True))
+        if live:
+            return live
+        # 2023/2024 FTE are #REF! in the export -- company-wide fallback only.
+        return overrides.get(("FTE_GROUP", y)) if country_code is None else None
+
+    total_fte = yearly(group_fte)
     energy_per_fte = {
         y: (total_energy[y] * 1000 / total_fte[y]) if total_fte[y] else None
         for y in years
     }
 
-    # Renewable / non-renewable split of PURCHASED electricity -- open item,
-    # returns None until electricity_renewable_share is populated (see README).
-    renewable_share = {y: load_renewable_share(conn, country_code, y) for y in years}
-    renewable_mwh = {y: (electricity_purchased[y] * renewable_share[y]) if renewable_share[y] is not None else None for y in years}
+    # Renewable / non-renewable split of PURCHASED electricity -- see
+    # RENEWABLE_ELECTRICITY_TYPES for the rule.
+    renewable_mask = act_f["activity_type_code"].isin(RENEWABLE_ELECTRICITY_TYPES) | solar_mask
+    # Capped at 100%: a country whose purchased electricity is all renewable
+    # (e.g. CH) would otherwise exceed it because of the solar quirk above.
+    renewable_share = {
+        y: min(qty_mwh(renewable_mask, y) / electricity_purchased[y], 1.0) if electricity_purchased[y] else None
+        for y in years
+    }
     nonrenewable_share = {y: (1 - renewable_share[y]) if renewable_share[y] is not None else None for y in years}
 
     rows.append(OutputRow("Total energy consumption in MWh", total_energy,
@@ -277,16 +296,28 @@ def build_output_table(conn, country_code: str | None = None, years: tuple[int, 
     waste_mask = act_f["activity_type_code"] == "WASTE"
     water_mask = act_f["activity_type_code"] == "WATER"
 
-    def qty_t(mask, year):
-        return _sum(act_f, mask & (act_f["reporting_year"] == year), "quantity") / 1000  # kg/ton -> t (PAPER is kg; WASTE already ton)
-
-    paper_t = yearly(lambda y: _sum(act_f, paper_mask & (act_f["reporting_year"] == y), "quantity") / 1000)
-    waste_t = yearly(lambda y: _sum(act_f, waste_mask & (act_f["reporting_year"] == y), "quantity"))
-    paper_waste_t = {y: paper_t[y] + waste_t[y] for y in years}
-    water_m3 = yearly(lambda y: _sum(act_f, water_mask & (act_f["reporting_year"] == y), "quantity"))
-
+    # SQB-only scope (see SQB_ONLY_OFFICE_IDS). For a country with no SQB
+    # office these lines are None rather than a misleading 0.
     sqb_office_ids = [o for o in SQB_ONLY_OFFICE_IDS if country_code is None or _office_country(conn, o) == country_code]
-    fte_sqb = yearly(lambda y: _sqb_fte(fte, y, sqb_office_ids) if sqb_office_ids else None)
+    sqb_mask = act_f["office_id"].isin(sqb_office_ids)
+
+    def sqb_qty(mask, year, divisor=1.0):
+        if not sqb_office_ids:
+            return None
+        return _sum(act_f, mask & sqb_mask & (act_f["reporting_year"] == year), "quantity") / divisor
+
+    paper_t = yearly(lambda y: sqb_qty(paper_mask, y, 1000))  # PAPER is kg
+    waste_t = yearly(lambda y: sqb_qty(waste_mask, y))  # WASTE already in tons
+    paper_waste_t = {y: (paper_t[y] + waste_t[y]) if paper_t[y] is not None else None for y in years}
+    water_m3 = yearly(lambda y: sqb_qty(water_mask, y))
+
+    def sqb_fte(y):
+        if not sqb_office_ids:
+            return None
+        live = _sqb_fte(fte, y, sqb_office_ids)
+        return live if live else overrides.get(("FTE_SQB", y))
+
+    fte_sqb = yearly(sqb_fte)
     paper_waste_per_fte = {y: (paper_waste_t[y] / fte_sqb[y]) if fte_sqb.get(y) else None for y in years}
     water_per_fte = {y: (water_m3[y] / fte_sqb[y]) if fte_sqb.get(y) else None for y in years}
 
@@ -301,8 +332,11 @@ def build_output_table(conn, country_code: str | None = None, years: tuple[int, 
                            _delta(water_per_fte.get(years[0]), water_per_fte.get(years[1]))))
 
     # ------------------------------------------------------------------- GHG
-    scope1_mask = act_f["scope"] == "SCOPE_1"
-    scope2_mask = act_f["scope"] == "SCOPE_2"
+    # Natural gas / biogas heating moves from SCOPE_2 (activity_types) to
+    # Scope 1 -- see SCOPE_1_HEATING_TYPES.
+    scope1_heating_mask = act_f["activity_type_code"].isin(SCOPE_1_HEATING_TYPES)
+    scope1_mask = (act_f["scope"] == "SCOPE_1") | scope1_heating_mask
+    scope2_mask = (act_f["scope"] == "SCOPE_2") & ~scope1_heating_mask
 
     def scope_sum(mask, basis, year):
         col = "market_based_tco2e" if basis == "market" else "location_based_tco2e"
@@ -323,7 +357,12 @@ def build_output_table(conn, country_code: str | None = None, years: tuple[int, 
             # per your decision -- see README "Category 15 scope".
             mask &= act_f["activity_type_code"].str.startswith("FINANCED_EMISSIONS")
             return _sum(act_f, mask & (act_f["reporting_year"] == year), "quantity")
-        return _sum(act_f, mask & (act_f["reporting_year"] == year), "market_based_tco2e")
+        year_mask = mask & (act_f["reporting_year"] == year)
+        if cat == 7 and not year_mask.any():
+            # No commuting rows exist for 2023/2024 in the export: use the
+            # company-wide historical figure, or "no data" for one country.
+            return overrides.get(("CATEGORY_7", year), 0.0) if country_code is None else None
+        return _sum(act_f, year_mask, "market_based_tco2e")
 
     cat_1_2 = yearly(lambda y: cat12.get(y) if country_code is None else None)
     cat_5 = yearly(lambda y: scope3_cat(5, y))
@@ -339,58 +378,57 @@ def build_output_table(conn, country_code: str | None = None, years: tuple[int, 
         y: (scope3_operational[y] + cat_15[y]) if scope3_operational[y] is not None and cat_15[y] is not None else None
         for y in years
     }
+    # Headline figure as published: market-based WITHOUT financed emissions.
     total_ghg_market = {
-        y: (scope1[y] + scope2_market[y] + scope3_of_which[y]) if scope3_of_which[y] is not None else None
+        y: (scope1[y] + scope2_market[y] + scope3_operational[y]) if scope3_operational[y] is not None else None
+        for y in years
+    }
+    total_ghg_market_with_financed = {
+        y: (total_ghg_market[y] + cat_15[y]) if total_ghg_market[y] is not None and cat_15[y] is not None else None
         for y in years
     }
     ghg_per_fte = {
-        y: ((scope1[y] + scope2_market[y] + scope3_operational[y]) * 1000 / total_fte[y])
-        if scope3_operational[y] is not None and total_fte.get(y) else None
+        y: (total_ghg_market[y] * 1000 / total_fte[y])
+        if total_ghg_market[y] is not None and total_fte.get(y) else None
         for y in years
     }
 
-    rows.append(OutputRow("Greenhouse gas emissions in tCO2e (Market Based)", total_ghg_market,
-                           _delta(total_ghg_market.get(years[0]), total_ghg_market.get(years[1]))))
-    rows.append(OutputRow("Scope 1", scope1, _delta(scope1.get(years[0]), scope1.get(years[1])), indent=1))
-    for code, label in [("FUEL_DIESEL", "Diesel"), ("FUEL_PETROL", "Petrol")]:
-        # Note: unlike the sample file, "Natural gas" heating combustion is
-        # NOT listed here -- activity_types.scope tags it SCOPE_2, and you
-        # confirmed that field is authoritative, so it is aggregated under
-        # Scope 2 below instead. See README "Scope 1 vs 2".
-        sub = yearly(lambda y, code=code: scope_sum(act_f["activity_type_code"] == code, "market", y))
-        rows.append(OutputRow(label, sub, _delta(sub.get(years[0]), sub.get(years[1])), indent=2))
-    rows.append(OutputRow("Scope 2 (Location Based)", scope2_location,
-                           _delta(scope2_location.get(years[0]), scope2_location.get(years[1])), indent=1))
-    rows.append(OutputRow("Scope 2 (Market Based)", scope2_market,
-                           _delta(scope2_market.get(years[0]), scope2_market.get(years[1])), indent=1))
-    for code, label in [
-        ("ELECTRICITY_*", "Electricity (purchased)"), ("HEATING_HEAT_PUMP", "Heat pump"),
-        ("HEATING_DISTRICT", "District heating"), ("HEATING_NATURAL_GAS", "Natural gas"),
-        ("HEATING_BIOGAS", "Biogas"),
-    ]:
-        mask = elec_mask & ~solar_mask if code == "ELECTRICITY_*" else act_f["activity_type_code"] == code
-        loc = yearly(lambda y, mask=mask: scope_sum(mask, "location", y))
-        rows.append(OutputRow(f"{label} (Location Based)", loc, _delta(loc.get(years[0]), loc.get(years[1])), indent=2))
-    for code, label in [
-        ("ELECTRICITY_*", "Electricity (purchased)"), ("HEATING_HEAT_PUMP", "Heat pump"),
-        ("HEATING_DISTRICT", "District heating"), ("HEATING_NATURAL_GAS", "Natural gas"),
-        ("HEATING_BIOGAS", "Biogas"),
-    ]:
-        mask = elec_mask & ~solar_mask if code == "ELECTRICITY_*" else act_f["activity_type_code"] == code
-        mkt = yearly(lambda y, mask=mask: scope_sum(mask, "market", y))
-        rows.append(OutputRow(f"{label} (Market Based)", mkt, _delta(mkt.get(years[0]), mkt.get(years[1])), indent=2))
-    rows.append(OutputRow("Scope 3 of which", scope3_of_which, _delta(scope3_of_which.get(years[0]), scope3_of_which.get(years[1])), indent=1))
-    rows.append(OutputRow("Category 1 & 2 Purchased Goods & Services and Capital goods", cat_1_2,
-                           _delta(cat_1_2.get(years[0]), cat_1_2.get(years[1])), indent=1))
-    rows.append(OutputRow("Category 5 - Waste generated in Operations (Waste and Water)", cat_5,
-                           _delta(cat_5.get(years[0]), cat_5.get(years[1])), indent=1))
-    rows.append(OutputRow("Category 6 - Business Travel", cat_6, _delta(cat_6.get(years[0]), cat_6.get(years[1])), indent=1))
-    rows.append(OutputRow("Category 7 - Employee Commuting", cat_7, _delta(cat_7.get(years[0]), cat_7.get(years[1])), indent=1))
-    rows.append(OutputRow("Category 15 - Investments", cat_15, _delta(cat_15.get(years[0]), cat_15.get(years[1])), indent=1))
-    rows.append(OutputRow("Greenhouse gas emissions in kgCO2e per FTE (Market Based)", ghg_per_fte,
-                           _delta(ghg_per_fte.get(years[0]), ghg_per_fte.get(years[1]))))
-    rows.append(OutputRow("Scope 3 operational", scope3_operational,
-                           _delta(scope3_operational.get(years[0]), scope3_operational.get(years[1]))))
+    def add(label, values, indent=0):
+        rows.append(OutputRow(label, values, _delta(values.get(years[0]), values.get(years[1])), indent=indent))
+
+    def by_code(codes, basis, include_solar=False):
+        mask = act_f["activity_type_code"].isin(codes)
+        if include_solar:
+            mask |= solar_mask
+        return yearly(lambda y: scope_sum(mask, basis, y))
+
+    purchased_elec_codes = [c for c in ENERGY_ELECTRICITY_TYPES_ALL if c != ELECTRICITY_SELF_GENERATED_TYPE]
+
+    add("Greenhouse gas emissions in tCO2e (Market Based, excluding financed emissions)", total_ghg_market)
+    add("Scope 1", scope1, indent=1)
+    add("Natural gas", by_code(SCOPE_1_HEATING_TYPES, "market"), indent=2)
+    add("Fuels", by_code(FUEL_TYPES, "market"), indent=2)
+    add("Scope 2 (Market Based)", scope2_market, indent=1)
+    add("Heat pump (Market Based)", by_code(["HEATING_HEAT_PUMP"], "market"), indent=2)
+    add("District heating (Market Based)", by_code(["HEATING_DISTRICT"], "market"), indent=2)
+    add("Electricity (purchased) (Market Based)", by_code(purchased_elec_codes, "market"), indent=2)
+    add("Scope 2 (Location Based)", scope2_location, indent=1)
+    add("Heat pump (Location Based)", by_code(["HEATING_HEAT_PUMP"], "location"), indent=2)
+    add("District heating (Location Based)", by_code(["HEATING_DISTRICT"], "location"), indent=2)
+    # The report's location-based "Electricity (purchased)" line also carries
+    # the grid-factor emissions recorded on the self-generated solar rows
+    # (e.g. 532.898 + 2.073 = 534.971 for 2025), so they are included here.
+    add("Electricity (purchased) (Location Based)", by_code(purchased_elec_codes, "location", include_solar=True), indent=2)
+    add("Scope 3 operational", scope3_operational, indent=1)
+    add("Category 1 & 2 Purchased Goods & Services and Capital goods", cat_1_2, indent=2)
+    add("Category 5 - Waste generated in Operations (Waste and Water)", cat_5, indent=2)
+    add("Category 6 - Business Travel", cat_6, indent=2)
+    add("Category 7 - Employee Commuting", cat_7, indent=2)
+    add("Greenhouse gas emissions in kgCO2e per FTE (Market Based)", ghg_per_fte)
+    add("FTE in locations covered by environmental indicators", total_fte)
+    add("Category 15 - Investments", cat_15)
+    add("Scope 3 of which", scope3_of_which)
+    add("Greenhouse gas emissions in tCO2e (Market Based, including financed emissions)", total_ghg_market_with_financed)
 
     return rows
 
