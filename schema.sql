@@ -9,8 +9,19 @@
 -- See README.md for the full mapping between these tables and every line of
 -- the target pivot output, plus every data-quality issue found in the source
 -- file and the decisions made about how to handle them.
+--
+-- Re-runnable: every table is dropped and recreated, so running this file
+-- followed by load_seed_data.py always rebuilds the database cleanly from
+-- seed/ (the tables hold only seeded data). This is also how an existing
+-- database picks up schema changes -- there are no incremental migrations.
 
 BEGIN;
+
+DROP TABLE IF EXISTS
+    activities, emission_factors, office_annual_metrics, offices, countries,
+    activity_types, category_1_2_overrides, historical_overrides,
+    electricity_renewable_share  -- removed in the report reconciliation
+    CASCADE;
 
 CREATE TABLE countries (
     country_code CHAR(2) PRIMARY KEY,

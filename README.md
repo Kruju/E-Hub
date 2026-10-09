@@ -19,6 +19,12 @@ python calculations.py --dsn "$DSN"                # all countries combined
 python calculations.py --dsn "$DSN" --country CH   # Switzerland only
 ```
 
+**After pulling new changes, re-run the `schema.sql` and `load_seed_data.py`
+lines.** `schema.sql` drops and recreates every table, so this is always a
+clean rebuild from `seed/` (and the only way an existing database picks up
+schema or data changes). Skipping it gives errors like `relation
+"historical_overrides" does not exist`.
+
 `calculations.py` also exposes `build_output_table(conn, country_code=None,
 years=(2025, 2024, 2023))` for use from other Python code (e.g. a future
 FastAPI endpoint) — see the bottom of the file for the CLI wrapper.
