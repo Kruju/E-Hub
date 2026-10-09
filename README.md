@@ -57,10 +57,11 @@ It opens at `http://localhost:8501`. Toggles, all in the sidebar:
 - **Show line-item detail** — expands the sub-categories under Electricity,
   Heat, Fuels, the Scope 1/2 breakdowns and the Scope 3 categories (collapsed by default to keep the
   table scannable).
-- **Include Category 15 (Investments) in category chart** — Category 15 is
-  50-100x larger than every other Scope 3 category, so the breakdown chart
-  splits it out by default; switching this on adds it back with a log-scaled
-  axis so the smaller categories stay readable.
+- **Include Category 15 (Investments) in charts** — Category 15 is 40-50x
+  larger than all other emissions combined, so both the scope chart and the
+  category breakdown leave it out by default; switching this on adds it back
+  (the category chart then uses a log-scaled axis so the smaller categories
+  stay readable).
 
 Company-wide-only lines (Category 1 & 2, Category 15, and everything that
 depends on them) show as "—" whenever a specific country is selected — see

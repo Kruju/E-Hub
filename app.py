@@ -105,10 +105,11 @@ show_detail = st.sidebar.checkbox(
 )
 
 include_investments = st.sidebar.checkbox(
-    "Include Category 15 (Investments) in category chart",
+    "Include Category 15 (Investments) in charts",
     value=False,
-    help="Category 15 is 50-100x larger than every other Scope 3 category, so it's split "
-         "out by default (log scale when included) to keep the operational categories readable.",
+    help="Category 15 is 40-50x larger than all other emissions combined, so it's left out "
+         "of both emissions charts by default to keep Scopes 1-3 readable. When included, "
+         "the category chart switches to a log scale.",
 )
 
 st.sidebar.caption(
@@ -181,12 +182,14 @@ with chart_cols[0]:
     years_sorted = sorted(shown_years)
     x = [str(y) for y in years_sorted]
     fig = go.Figure()
-    for label, desc, color in [
+    scope_series = [
         ("Scope 1", "Scope 1", BLUE),
         ("Scope 2", scope2_total_desc, ORANGE),
         ("Scope 3 operational", "Scope 3 operational", AQUA),
-        ("Category 15 (Investments)", "Category 15 - Investments", YELLOW),
-    ]:
+    ]
+    if include_investments:
+        scope_series.append(("Category 15 (Investments)", "Category 15 - Investments", YELLOW))
+    for label, desc, color in scope_series:
         y = [val(desc, yr) or 0 for yr in years_sorted]
         fig.add_bar(name=label, x=x, y=y, marker_color=color)
     fig.update_layout(
@@ -195,13 +198,14 @@ with chart_cols[0]:
         paper_bgcolor=CHART_SURFACE,
         font_color=PRIMARY_TEXT,
         yaxis=dict(title="tCO2e", gridcolor=GRIDLINE, zerolinecolor=AXIS_LINE),
-        xaxis=dict(gridcolor=GRIDLINE, linecolor=AXIS_LINE),
+        # "category" so years render as labels, not a numeric axis with 2,022.5 ticks.
+        xaxis=dict(type="category", gridcolor=GRIDLINE, linecolor=AXIS_LINE),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
         margin=dict(t=10, b=10, l=10, r=10),
     )
     st.plotly_chart(fig, width='stretch')
-    st.caption("Scope 2 uses the basis selected in the sidebar. Category 15 dwarfs the "
-               "other categories -- see the breakdown chart for those on a readable scale.")
+    st.caption("Scope 2 uses the basis selected in the sidebar. Category 15 (financed "
+               "emissions) is excluded unless switched on in the sidebar.")
 
 with chart_cols[1]:
     st.subheader("Total energy consumption, by year")
@@ -213,7 +217,7 @@ with chart_cols[1]:
         paper_bgcolor=CHART_SURFACE,
         font_color=PRIMARY_TEXT,
         yaxis=dict(title="MWh", gridcolor=GRIDLINE, zerolinecolor=AXIS_LINE),
-        xaxis=dict(gridcolor=GRIDLINE, linecolor=AXIS_LINE),
+        xaxis=dict(type="category", gridcolor=GRIDLINE, linecolor=AXIS_LINE),
         showlegend=False,
         margin=dict(t=10, b=10, l=10, r=10),
     )
@@ -279,6 +283,8 @@ def fmt(value: float | None, as_percent: bool) -> str:
         return f"{value * 100:,.1f}%"
     if abs(value) >= 1000:
         return f"{value:,.0f}"
+    if 0 < abs(value) < 1:
+        return f"{value:,.3f}"  # small ratios, e.g. paper & waste t per FTE (0.246)
     return f"{value:,.2f}"
 
 
