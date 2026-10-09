@@ -76,8 +76,8 @@ Five tables mirror the source export 1:1 (`offices`, `office_annual_metrics`
   Purchased Goods & Services and Capital Goods". Per your decision, this is
   hardcoded because there is **no source activity data for it at all** — see
   "Still open" below.
-- **`historical_overrides`** — company-wide 2023/2024 figures that are
-  *missing* from the export (FTE and Employee Commuting). Only used when the
+- **`historical_overrides`** — company-wide 2023/2024 Employee Commuting
+  figures, which are *missing* from the export. Only used when the
   live data for that metric/year is empty, so they switch off automatically
   once real data is loaded — see "Historical overrides" below.
 
@@ -97,26 +97,23 @@ years** (within the report's own rounding), except one location-based line
 
 | # | Root cause | Lines affected | Fix |
 |---|---|---|---|
-| 1 | **Mislabelled source row**: the 2024 Luxembourg district-heating record (39,192 kWh, period 2024-01-01→2024-12-31) is tagged `reporting_year = 2023` / `…_2023` in the export | Heat, District heating, Total energy, Scope 2 (2024 showed 0, 2023 was doubled) | Corrected to 2024 in `seed/activities.csv` |
-| 2 | **Transposed source values**: solar thermal 2023 and 2025 quantities are swapped in the export | Solar thermal, Heat, Total energy (2025, 2023) | Swapped back in `seed/activities.csv` (report: 18 / 16 / 16) |
+| 1 | **Mislabelled source row**: the 2024 Luxembourg district-heating record (39,192 kWh, period 2024-01-01→2024-12-31) was tagged `reporting_year = 2023` / `…_2023` in the original export | Heat, District heating, Total energy, Scope 2 (2024 showed 0, 2023 was doubled) | Corrected to 2024 — now also fixed in the source workbook |
+| 2 | **Transposed source values**: solar thermal 2023 and 2025 quantities were swapped in the original export | Solar thermal, Heat, Total energy (2025, 2023) | Swapped back (report: 18 / 16 / 16) — now also fixed in the source workbook |
 | 3 | **Wrong scope grouping**: natural-gas (and biogas) heating combustion was put in Scope 2 because `activity_types.scope` says so; the report (and GHG Protocol) puts it in Scope 1 | Scope 1 (was 12 vs 51), Scope 2 market (was 169 vs 130) and location | `SCOPE_1_HEATING_TYPES` in `calculations.py`; biogas folds into the "Natural gas" line as in the report |
 | 4 | **Wrong office scope for paper/waste/water**: summed over *all* offices; the report says these are "based solely on Swissquote Bank Ltd" | Paper, Waste (was 112 vs 96), Water (was 5,492 vs 4,333), per-FTE lines | Quantities restricted to the SQB offices (+ `SWITZERLAND_CH`, where paper is booked) |
 | 5 | **Wrong headline total**: included Category 15 financed emissions (604,295) — the report's headline is "market-based *without* financed emissions" | Total tCO2e (13,595), kgCO2e per FTE | Headline = Scope 1 + Scope 2 (market) + Scope 3 operational; the old figure is kept as a separate "including financed emissions" line |
 | 6 | **Renewable share "not computable"**: the rule is (Hydropower + Renewable + self-generated Solar) ÷ purchased electricity | Renewable / non-renewable % | Implemented; reproduces 93.525% / 93.108% / 93.396% to floating-point precision. Capped at 100% for single-country views |
 | 7 | **Self-generated solar left out of location-based electricity**: the report's line includes the grid-factor emissions recorded on the solar rows | Electricity (purchased) location-based (was 533 vs 535) | Included |
-| 8 | **Missing 2023/2024 data**: FTE is `#REF!` and commuting rows don't exist | Energy/GHG per FTE, FTE, Commuting, Scope 3 operational, totals (2023/2024) | `historical_overrides` (see below) |
+| 8 | **Missing 2023/2024 data**: FTE was `#REF!` in the original export, and commuting rows don't exist | Energy/GHG per FTE, FTE, Commuting, Scope 3 operational, totals (2023/2024) | Per-office FTE now loaded from the corrected workbook (totals 1,217.27 / 1,133.52; SQB 1,005.92 / 957.42 — exactly what the report implies); commuting via `historical_overrides` (see below) |
 
 ### Historical overrides
 
 | Metric | 2024 | 2023 | Source |
 |---|---|---|---|
-| `FTE_GROUP` | 1,217.27 | 1,133.52 | Backed out of the draft sheet's GHG-per-FTE line; matches report (1,217 / 1,134). Same method gives exactly the loaded 2025 FTE (1,448.4325), which validates it |
-| `FTE_SQB` | 1,005.92 | 957.42 | Backed out of the draft sheet's paper & waste *and* water per-FTE lines (both give identical values) |
 | `CATEGORY_7` (tCO2e) | 1,166 | 1,158.14 | 2024 from the published report (the draft's 1,167.13 doesn't reconcile with the report's Scope 3 total of 10,722); 2023 from the draft sheet, matches report |
 
 These are company-wide only (country views show "—" for those years).
-**Replace them with real per-office FTE and commuting records when
-available** — the overrides are ignored as soon as live data exists.
+**Replace them with real per-office commuting records when available** — the overrides are ignored as soon as live data exists.
 
 ## The pivot, line by line
 
@@ -201,14 +198,11 @@ These are typos/format issues confirmed by comparing `offices` against every
   (activity_types) — space vs. underscore.
 - 3 junk rows with `activity_type_code` blank (`NULL_YUH_CH_2025/2024/2023`) dropped.
 - `fte_female` / `fte_male` / `fte_total` in `offices_information` are stored
-  ×100 in the source. Stored as real headcounts in `office_annual_metrics`.
-- **`HEATING_DISTRICT_LUXEMBOURG_LU`, period 2024**: tagged `reporting_year
-  2023` (and ID `…_2023`) in the export → corrected to 2024. Confirmed by its
-  own period dates and by the report (District heating 2024 = 39 MWh).
-- **`HEATING_SOLAR_THERMAL_SWITZERLAND_CH`**: 2023 (17.543) and 2025 (15.839)
-  quantities swapped in the export → swapped back. Confirmed by the report
-  (2025 = 18, 2023 = 16 MWh). **Please also fix both of these in the source
-  system** so the next export doesn't reintroduce them.
+  ×100 in the source (all three years). Stored as real headcounts in
+  `office_annual_metrics`.
+
+The district-heating year and solar-thermal swap described above were fixed
+in the source workbook (2026-10 update), so `seed/` now matches it directly.
 
 **One mapping NOT confidently resolved** — flagged rather than guessed:
 `GLAND_ELLIPSE_CH` is referenced by `offices_information`/`activities`, but
@@ -230,7 +224,7 @@ reported figure depends on it.)
    kgCO2e/FTE in 2025. Immaterial; deliberately not replicated.
 3. **Business Travel (Category 6)** is ~0.015% off the draft sheet (489.78 vs.
    489.71 tCO2e for 2025) — both round to the published 490.
-4. **Real 2023/2024 FTE and commuting data** — see "Historical overrides".
+4. **Real 2023/2024 commuting data** — see "Historical overrides".
 5. **Category 1 & 2 real source data** — **zero** activity rows exist in the
    export (`PURCHASED_GOODS_SERVICES`/`CAPITAL_GOODS` are defined but never
    populated). `category_1_2_overrides` hardcodes the three published totals

@@ -84,9 +84,7 @@ FUEL_TYPES = ["FUEL_DIESEL", "FUEL_PETROL"]
 # HEATING_SOLAR_THERMAL is declared with default_unit='kWh' like every other
 # heating type, but its recorded `quantity` values in the source are already
 # in MWh (confirmed: dividing by 1000 like the others makes it ~1000x too
-# small). Treated as a unit anomaly and left un-divided here. (Its 2023 and
-# 2025 values were transposed in the source export; corrected in
-# seed/activities.csv -- see README.)
+# small). Treated as a unit anomaly and left un-divided here.
 ENERGY_ALREADY_IN_MWH = {"HEATING_SOLAR_THERMAL"}
 
 # FUEL_DIESEL/FUEL_PETROL quantities are recorded in litres. Converting to
@@ -241,11 +239,8 @@ def build_output_table(conn, country_code: str | None = None, years: tuple[int, 
     total_energy = {y: electricity[y] + heat[y] + fuels[y] for y in years}
 
     def group_fte(y):
-        live = float(fte_f.loc[fte_f["reporting_year"] == y, "fte_total"].sum(skipna=True))
-        if live:
-            return live
-        # 2023/2024 FTE are #REF! in the export -- company-wide fallback only.
-        return overrides.get(("FTE_GROUP", y)) if country_code is None else None
+        total = float(fte_f.loc[fte_f["reporting_year"] == y, "fte_total"].sum(skipna=True))
+        return total or None
 
     total_fte = yearly(group_fte)
     energy_per_fte = {
@@ -311,13 +306,7 @@ def build_output_table(conn, country_code: str | None = None, years: tuple[int, 
     paper_waste_t = {y: (paper_t[y] + waste_t[y]) if paper_t[y] is not None else None for y in years}
     water_m3 = yearly(lambda y: sqb_qty(water_mask, y))
 
-    def sqb_fte(y):
-        if not sqb_office_ids:
-            return None
-        live = _sqb_fte(fte, y, sqb_office_ids)
-        return live if live else overrides.get(("FTE_SQB", y))
-
-    fte_sqb = yearly(sqb_fte)
+    fte_sqb = yearly(lambda y: _sqb_fte(fte, y, sqb_office_ids) if sqb_office_ids else None)
     paper_waste_per_fte = {y: (paper_waste_t[y] / fte_sqb[y]) if fte_sqb.get(y) else None for y in years}
     water_per_fte = {y: (water_m3[y] / fte_sqb[y]) if fte_sqb.get(y) else None for y in years}
 

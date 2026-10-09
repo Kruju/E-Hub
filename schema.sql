@@ -4,7 +4,7 @@
 -- (offices, offices_information, activity_types, emission_factors, activities)
 -- plus two small tables needed to make the published figures reproducible:
 --   category_1_2_overrides  -- static historical values for a line with no source data (see README)
---   historical_overrides    -- 2023/2024 FTE and commuting figures missing from the export (see README)
+--   historical_overrides    -- 2023/2024 commuting figures missing from the export (see README)
 --
 -- See README.md for the full mapping between these tables and every line of
 -- the target pivot output, plus every data-quality issue found in the source
@@ -115,8 +115,6 @@ CREATE TABLE category_1_2_overrides (
 -- published Sustainability Report 2025. calculations.py only uses a row here
 -- when the live data for that metric/year is empty, so once the real data is
 -- loaded these are ignored automatically. Metrics:
---   FTE_GROUP   total FTE, all offices      (2023/2024 FTE are #REF! in the export)
---   FTE_SQB     FTE of the SQB-only offices (same reason)
 --   CATEGORY_7  Employee Commuting tCO2e    (no 2023/2024 commuting rows exist)
 CREATE TABLE historical_overrides (
     metric          TEXT NOT NULL,

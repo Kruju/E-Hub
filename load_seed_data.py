@@ -223,17 +223,10 @@ def load_category_1_2_overrides(cur):
 
 def load_historical_overrides(cur):
     # Figures that are missing (not wrong) from the export -- see README
-    # "Historical overrides". FTE values are backed out of the sample
-    # "Output 2025" per-FTE lines (the paper & waste and water lines give
-    # identical SQB FTE; the same method returns exactly the loaded 2025
-    # FTE of 1,448.4325, which validates it). Commuting comes from the
-    # published Sustainability Report 2025. calculations.py ignores a row as
-    # soon as real data for that metric/year exists.
+    # "Historical overrides". Commuting comes from the published
+    # Sustainability Report 2025. calculations.py ignores a row as soon as
+    # real data for that metric/year exists.
     rows = [
-        ("FTE_GROUP", 2024, 1217.27, "Backed out of sample Output 2025 GHG-per-FTE line; matches report (1,217)"),
-        ("FTE_GROUP", 2023, 1133.52, "Backed out of sample Output 2025 GHG-per-FTE line; matches report (1,134)"),
-        ("FTE_SQB", 2024, 1005.92, "Backed out of sample Output 2025 paper&waste and water per-FTE lines"),
-        ("FTE_SQB", 2023, 957.42, "Backed out of sample Output 2025 paper&waste and water per-FTE lines"),
         ("CATEGORY_7", 2024, 1166.0, "Sustainability Report 2025 (published, rounded); sample sheet's 1,167.13 is stale"),
         ("CATEGORY_7", 2023, 1158.1444955286536, "Sample Output 2025; matches report (1,158)"),
     ]
