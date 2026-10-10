@@ -280,7 +280,7 @@ def build_output_table(conn, country_code: str | None = None, years: tuple[int, 
         sub = yearly(lambda y, code=code: qty_mwh(act_f["activity_type_code"] == code, y))
         rows.append(OutputRow(label, sub, _delta(sub.get(years[0]), sub.get(years[1])), indent=2))
     rows.append(OutputRow("Fuels (petrol/diesel)", fuels, _delta(fuels.get(years[0]), fuels.get(years[1])), indent=1))
-    for code, label in [("FUEL_DIESEL", "Diesel (hide)"), ("FUEL_PETROL", "Petrol (hide)")]:
+    for code, label in [("FUEL_DIESEL", "Diesel"), ("FUEL_PETROL", "Petrol")]:
         sub = yearly(lambda y, code=code: qty_mwh(act_f["activity_type_code"] == code, y))
         rows.append(OutputRow(label, sub, _delta(sub.get(years[0]), sub.get(years[1])), indent=2))
     rows.append(OutputRow("Energy consumption in kWh per FTE", energy_per_fte,
