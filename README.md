@@ -11,6 +11,12 @@ number, and update it if you change a rule below.
 
 ## Quick start
 
+Requires Python 3.9+. Pinned versions assume Python 3.13 (prebuilt wheels
+available for all deps); on older Pythons `pip` may need to build `pandas`
+from source — if so, either upgrade Python or relax the `pandas` pin in
+`requirements.txt`/`requirements-web.txt`/`requirements-dev.txt` to a version
+with wheels for your interpreter.
+
 ```bash
 pip install -r requirements.txt
 psql "$DSN" -f schema.sql
